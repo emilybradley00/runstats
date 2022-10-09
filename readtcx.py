@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import pytz
 from timezonefinder import TimezoneFinder
 from typing import Dict, Optional, Any, Union, Tuple
+import sys
 
 import lxml.etree
 import pandas as pd
@@ -116,65 +117,75 @@ def get_dataframes(fname):
     root = tree.getroot()
     activity = root.find('ns:Activities', NAMESPACES)[0]  # Assuming we know there is only one Activity in the TCX file
                                                           # (or we are only interested in the first one)
-    points_data = []
-    laps_data = []
-    lap_no = 1
-    for lap in activity.findall('ns:Lap', NAMESPACES):
-        # Get data about the lap itself
-        single_lap_data = get_tcx_lap_data(lap)
-        single_lap_data['number'] = lap_no
-        laps_data.append(single_lap_data)
+
+    #check that the activity type is running and not treadmill
+    if activity.attrib == {'Sport': 'Running'} and activity.findall('ns:Position', NAMESPACES) is not None:
+        points_data = []
+        laps_data = []
+        lap_no = 1
+        for lap in activity.findall('ns:Lap', NAMESPACES):
+            # Get data about the lap itself
+            single_lap_data = get_tcx_lap_data(lap)
+            single_lap_data['number'] = lap_no
+            laps_data.append(single_lap_data)
         
-        # Get data about the track points in the lap
-        track = lap.find('ns:Track', NAMESPACES) 
-        for point in track.findall('ns:Trackpoint', NAMESPACES):
-            single_point_data = get_tcx_point_data(point)
-            if single_point_data:
-                single_point_data['lap'] = lap_no
-                points_data.append(single_point_data)
-        lap_no += 1
+            # Get data about the track points in the lap
+            track = lap.find('ns:Track', NAMESPACES) 
+            for point in track.findall('ns:Trackpoint', NAMESPACES):
+                single_point_data = get_tcx_point_data(point)
+                if single_point_data:
+                    single_point_data['lap'] = lap_no
+                    points_data.append(single_point_data)
+            lap_no += 1
     
-    # Create DataFrames from the data we have collected. If any information is missing from a particular lap or track
-    # point, it will show up as a null value or "NaN" in the DataFrame.
+        # Create DataFrames from the data we have collected. If any information is missing from a particular lap or track
+        # point, it will show up as a null value or "NaN" in the DataFrame.
     
-    laps_df = pd.DataFrame(laps_data, columns=LAPS_COLUMN_NAMES)
-    laps_df.set_index('number', inplace=True)
-    points_df = pd.DataFrame(points_data, columns=POINTS_COLUMN_NAMES)
+        laps_df = pd.DataFrame(laps_data, columns=LAPS_COLUMN_NAMES)
+        laps_df.set_index('number', inplace=True)
+        points_df = pd.DataFrame(points_data, columns=POINTS_COLUMN_NAMES)
+
+        hr_lap = 0
+        distance_total = laps_df["distance"].sum()/1000
+        total_duration = laps_df["total_time"].sum()
+        for x in range(1,len(laps_df)+1):
+            hr_lap += laps_df.loc[x].at["avg_hr"]*laps_df.loc[x].at["total_time"].total_seconds()
+
+        hr_average = int(round(hr_lap/total_duration.total_seconds()))
+        avg_pace = timedelta(seconds=int(round((total_duration.total_seconds()/distance_total))))
+
+        starting_lat = points_df.loc[0].at["latitude"]
+        starting_long = points_df.loc[0].at["longitude"]
+        starting_time = points_df.loc[0].at["time"]
+
+        # Find timezone based on longitude and latitude
+        tf = TimezoneFinder()
+        local_time_zone = tf.timezone_at(lng=starting_long, lat=starting_lat)
+
+        tz = pytz.timezone(local_time_zone)
+        local_starting_time = starting_time.replace(tzinfo=pytz.utc).astimezone(tz)
+
+        stats_dict = {
+            "duration":str(total_duration),
+            "distance":str(distance_total)+' km',
+            "average heart rate":str(hr_average)+' bpm',
+            "average pace":str(avg_pace)+' mins/km',
+            "starting time":local_starting_time
+        }
+
+    else:
+        laps_df = None
+        points_df = None
+        stats_dict = None
     
-    return laps_df, points_df
+    return laps_df, points_df, stats_dict
 
 
 if __name__ == '__main__':
     
     from sys import argv
     fname = argv[1]  # Path to TCX file to be given as first argument to script
-    laps_df, points_df = get_dataframes(fname)
+    laps_df, points_df, stats_dict = get_dataframes(fname)
     print('LAPS:')
     print(laps_df)
-    total_duration = timedelta(minutes=0, seconds=0)
-    distance_total = 0
-    hr_lap = 0
-    for x in range(1,len(laps_df)+1):
-        distance_total += laps_df.loc[x].at["distance"]/1000
-        total_duration += laps_df.loc[x].at["total_time"]
-        hr_lap += laps_df.loc[x].at["avg_hr"]*laps_df.loc[x].at["total_time"].total_seconds()
-
-    #general stats for the whole activity...
-    print('duration: '+str(total_duration))
-    print('distance: '+str(distance_total)+' km')
-    print('average pace: '+str(timedelta(seconds=int(round((total_duration.total_seconds()/distance_total)))))+' mins/km')
-    print('average heart rate: '+str(int(round(hr_lap/total_duration.total_seconds())))+' bpm')
-
-    starting_lat = points_df.loc[0].at["latitude"]
-    starting_long = points_df.loc[0].at["longitude"]
-    starting_time = points_df.loc[0].at["time"]
-
-    # Find timezone based on longitude and latitude
-    tf = TimezoneFinder()
-    local_time_zone = tf.timezone_at(lng=starting_long, lat=starting_lat)
-
-    tz = pytz.timezone(local_time_zone)
-    local_starting_time = starting_time.replace(tzinfo=pytz.utc).astimezone(tz)
-
-    print('location: ' + local_time_zone)
-    print('starting time: ' + str(local_starting_time))
+    print(stats_dict)
