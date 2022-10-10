@@ -7,7 +7,7 @@ import glob
 import matplotlib as mpl
 mpl.use('tkagg')
 from matplotlib import pyplot as plt, dates as mdates
-from datetime import datetime
+from datetime import date, timedelta
 import pandas as pd
 from pandas.plotting import register_matplotlib_converters
 register_matplotlib_converters()
@@ -20,7 +20,6 @@ activity_list = glob.glob("/Users/emilybradley/Desktop/runstats/garmin-connect-e
 #activity_list = glob.glob("/Users/emilybradley/Desktop/runstats/activity_files/*.tcx")
 
 for activity_path in activity_list:
-    print(activity_path)
     laps_df, points_df, stats_dict = get_dataframes(activity_path)
 
     if laps_df is not None:
@@ -29,15 +28,30 @@ for activity_path in activity_list:
         listofactivitydicts.append(stats_dict)
 
 run_scores = []
-run_dates = []
 for run in listofactivitydicts:
-    run_scores.append(run['rTSS'])
-    run_dates.append(run['starting time'].date())
+    run_scores.append((run['starting time'].date(), run['rTSS']))
 
-run_dates = pd.to_datetime(run_dates)
+#sort run_scores (a list of tuples) by date (newest to oldest)
+run_scores = sorted(run_scores, key=lambda x: x[0], reverse = True)
 
-plt.scatter(run_dates, run_scores, s=2.5, c='r')
+day_count = (run_scores[0][0] - run_scores[-1][0]).days
+
+forms = []
+
+date_range = [run_scores[-1][0] + timedelta(n) for n in range(day_count)]
+print(date_range)
+
+for single_date in date_range[30:]:
+    form = 0
+    for date1 in (single_date - timedelta(n) for n in range(30)):
+        for x in range(len(list(zip(*run_scores))[0])):
+            if date1 == list(zip(*run_scores))[0][x]:
+                form += list(zip(*run_scores))[1][x]
+    forms.append((single_date,form/30))
+
+plt.scatter(list(zip(*run_scores))[0], list(zip(*run_scores))[1], s=2.5, c='r')
+plt.plot(list(zip(*forms))[0], list(zip(*forms))[1], c='b')
 plt.gcf().autofmt_xdate()
-plt.ylim(0,140)
+plt.ylim(0,150)
 plt.ylabel('rTSS')
 plt.show()
