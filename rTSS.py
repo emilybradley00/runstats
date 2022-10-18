@@ -14,7 +14,7 @@ def scoremyrun(fivekm,laps_df):
         #should intensity be linear in relation to threshold? doesn't give enough points to speed work?
         duration = laps_df.loc[x].at["total_time"].total_seconds()
         #not actually GAP at the moment, just normal pace (in seconds per km)
-        lapscores.append(100*(duration*intensity)/(3600))
+        lapscores.append(100*(duration*intensity*intensity)/(3600))
     totalscore = int(round(sum(lapscores)))
     return totalscore
     
