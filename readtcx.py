@@ -166,8 +166,8 @@ def get_dataframes(fname):
         local_starting_time = starting_time.replace(tzinfo=pytz.utc).astimezone(tz)
 
         stats_dict = {
-            "duration":str(total_duration),
-            "distance":str(distance_total)+' km',
+            "duration":total_duration.round(freq='s').total_seconds(),
+            "distance":str(round(distance_total,2))+' km',
             "average heart rate":str(hr_average)+' bpm',
             "average pace":str(avg_pace)+' mins/km',
             "starting time":local_starting_time
