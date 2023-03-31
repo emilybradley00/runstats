@@ -121,7 +121,7 @@ def main(argv):
         form_delta.append((form[0],form[1]-forms_weekly[index][1]))
 
     fig, ax = plt.subplots()
-    points = ax.scatter(list(zip(*run_scores_to_plot))[0], list(zip(*run_scores_to_plot))[1], s=2, c='r')
+    points = ax.scatter(list(zip(*run_scores))[0], list(zip(*run_scores))[1], s=2, c='r')
     ax.plot(list(zip(*forms_rolling))[0], list(zip(*forms_rolling))[1], c='b')
     ax.plot(list(zip(*forms_weekly))[0], list(zip(*forms_weekly))[1], c='m', linewidth=0.5)
     ax.plot(list(zip(*form_delta))[0], list(zip(*form_delta))[1], c='y', linewidth=0.5)
