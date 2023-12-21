@@ -1,0 +1,3 @@
+[submodule "garmin-connect-export"]
+	path = garmin-connect-export
+	url = https://github.com/pe-st/garmin-connect-export
