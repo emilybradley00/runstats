@@ -52,7 +52,7 @@ def main(argv):
 
     listofactivitydicts = []
 
-    activity_list =  glob.glob('/Users/emilybradley/Desktop/runstats/garmin-connect-export-pest/' + args.directory + '/*.tcx')
+    activity_list =  glob.glob('/Users/emilybradley/Desktop/runstats/' + args.directory + '/*.tcx')
 
     for activity_path in activity_list:
         try:
