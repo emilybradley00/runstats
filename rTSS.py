@@ -4,6 +4,26 @@
 
 from trainingzones import zones
 from readtcx import get_dataframes
+import argparse
+from sys import argv, exit
+import pandas as pd
+from cache_pandas import cache_to_csv
+import glob
+import logging
+
+def parse_arguments(argv):
+    """
+    Setup the argument parser and parse the command line arguments.
+    """
+
+    parser = argparse.ArgumentParser(description='rTSS calculator')
+
+    parser.add_argument('-d', '--directory',
+        help='the directory where the tcx files are stored (e.g. Users/emilybradley/Desktop/runstats/em_files)', required=True)
+    parser.add_argument('-f', '--fivekm',
+        help='estimation of current 5km race time', required=True)
+
+    return parser.parse_args(argv[1:])
 
 def scoremyrun(fivekm,laps_df):
     threshold = zones(fivekm)
@@ -17,12 +37,44 @@ def scoremyrun(fivekm,laps_df):
         lapscores.append(100*(duration*intensity*intensity)/(3600))
     totalscore = int(round(sum(lapscores)))
     return totalscore
-    
-if __name__ == '__main__':
-    
-    from sys import argv
-    fname = argv[1]  # Path to TCX file to be given as first argument to script
-    fivekm = argv[2]
-    laps_df, points_df, stats_dict = get_dataframes(fname)
-    rTSS = scoremyrun(fivekm,laps_df)
-    print(rTSS)
+
+
+@cache_to_csv("runscores.csv", refresh_time=100)
+def main(argv):
+    """
+    Main entry point for rTSS.py
+    """
+
+    args = parse_arguments(argv)
+
+    listofactivitydicts = []
+
+    activity_list =  glob.glob('/Users/emilybradley/Desktop/runstats/' + args.directory + '/*.tcx')
+
+    for activity_path in activity_list:
+        try:
+            laps_df = get_dataframes(activity_path)[0]
+            stats_dict = get_dataframes(activity_path)[1]
+        except:
+            logging.error('error with ' + activity_path)
+        else:
+            if laps_df is not None:
+                rTSS = scoremyrun(args.fivekm, laps_df)
+                stats_dict['rTSS'] = rTSS
+                stats_dict['date'] = stats_dict['starting time'].date()
+                stats_dict['filename'] = activity_path.split('/')[-1]
+                listofactivitydicts.append(stats_dict)
+
+    run_scores_df = pd.DataFrame(listofactivitydicts)
+    run_scores_df.set_index('filename', inplace=True)
+
+    # instead of returning the run_scores list, add to an excel file?
+    return pd.DataFrame.from_dict(run_scores_df)
+
+
+if __name__ == "__main__":
+    try:
+        main(argv)
+    except KeyboardInterrupt:
+        print('Interrupted')
+        exit(0)

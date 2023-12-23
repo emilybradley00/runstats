@@ -109,8 +109,7 @@ def get_tcx_point_data(point):
 def get_dataframes(fname):
 #def get_dataframes(fname: str) -> Tuple[pd.DataFrame, pd.DataFrame]:  
     """Takes the path to a TCX file (as a string) and returns two Pandas
-    DataFrames: one containing data about the laps, and one containing
-    data about the individual points.
+        DataFrames: one containing data about the laps, and one containing general stats.
     """
     
     tree = lxml.etree.parse(fname)
@@ -120,7 +119,7 @@ def get_dataframes(fname):
 
     #check that the activity type is running and not treadmill
     if activity.attrib == {'Sport': 'Running'} and activity.findall('ns:Position', NAMESPACES) is not None:
-        points_data = []
+        starting_point = {}
         laps_data = []
         lap_no = 1
         for lap in activity.findall('ns:Lap', NAMESPACES):
@@ -129,13 +128,12 @@ def get_dataframes(fname):
             single_lap_data['number'] = lap_no
             laps_data.append(single_lap_data)
         
-            # Get data about the track points in the lap
-            track = lap.find('ns:Track', NAMESPACES) 
-            for point in track.findall('ns:Trackpoint', NAMESPACES):
-                single_point_data = get_tcx_point_data(point)
+            # if it's the first lap, store the starting point
+            if lap_no == 1:
+                track = lap.find('ns:Track', NAMESPACES) 
+                single_point_data = get_tcx_point_data(track.findall('ns:Trackpoint', NAMESPACES)[0])
                 if single_point_data:
-                    single_point_data['lap'] = lap_no
-                    points_data.append(single_point_data)
+                    starting_point = single_point_data
             lap_no += 1
     
         # Create DataFrames from the data we have collected. If any information is missing from a particular lap or track
@@ -143,7 +141,6 @@ def get_dataframes(fname):
     
         laps_df = pd.DataFrame(laps_data, columns=LAPS_COLUMN_NAMES)
         laps_df.set_index('number', inplace=True)
-        points_df = pd.DataFrame(points_data, columns=POINTS_COLUMN_NAMES)
 
         hr_lap = 0
         distance_total = laps_df["distance"].sum()/1000
@@ -154,9 +151,9 @@ def get_dataframes(fname):
         hr_average = int(round(hr_lap/total_duration.total_seconds()))
         avg_pace = timedelta(seconds=int(round((total_duration.total_seconds()/distance_total))))
 
-        starting_lat = points_df.loc[0].at["latitude"]
-        starting_long = points_df.loc[0].at["longitude"]
-        starting_time = points_df.loc[0].at["time"]
+        starting_lat = starting_point["latitude"]
+        starting_long = starting_point["longitude"]
+        starting_time = starting_point["time"]
 
         # Find timezone based on longitude and latitude
         tf = TimezoneFinder()
@@ -175,17 +172,13 @@ def get_dataframes(fname):
 
     else:
         laps_df = None
-        points_df = None
         stats_dict = None
     
-    return laps_df, points_df, stats_dict
+    return laps_df, stats_dict
 
 
 if __name__ == '__main__':
     
     from sys import argv
     fname = argv[1]  # Path to TCX file to be given as first argument to script
-    laps_df, points_df, stats_dict = get_dataframes(fname)
-    print('LAPS:')
-    print(laps_df)
-    print(stats_dict)
+    laps_df, stats_dict = get_dataframes(fname)

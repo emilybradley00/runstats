@@ -9,5 +9,3 @@ def zones(racetime):
     km_pace = racetime_seconds/5
     threshold_pace = 1.07*km_pace
     return threshold_pace
-    
-zones('18:50')
