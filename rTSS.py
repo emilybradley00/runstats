@@ -39,7 +39,7 @@ def scoremyrun(fivekm,laps_df):
     return totalscore
 
 
-@cache_to_csv("runscoresanna.csv", refresh_time=1)
+@cache_to_csv("runscores.csv", refresh_time=1)
 def main(argv):
     """
     Main entry point for rTSS.py

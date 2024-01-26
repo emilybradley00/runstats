@@ -63,7 +63,7 @@ def main(argv):
     if args.months == 'all':
         date_range = [min(run_dates) + timedelta(n) for n in range(day_count)]
         date_range = date_range[42:]
-    elif args.months.isdigit() and int(args.months >0):
+    elif args.months.isdigit() and int(args.months)>0:
         #use custom month length for the graph, check if that much data is availale first
         graph_start_date = datetime.today() - timedelta(int(args.months)*30)
         month_range_to_days = (datetime.today() - graph_start_date).days
@@ -115,14 +115,17 @@ def main(argv):
                 day_score = 0
                 if date1 in (single_date - timedelta(n) for n in range(7)):
                     for index, row in run_scores_df.iterrows():
-                        if row['date'] == date1:
+                        #print(type(row['date']))
+                        #print(type(date1))
+                        if row['date'].date() == date1:
+                            print('hello')
                             days_since = (single_date - date1).days
                             form_r += row['rTSS']*weighting[days_since]
                             form_w += row['rTSS']
                             day_score += row['rTSS']
                 else:
                     for index, row in run_scores_df.iterrows():
-                        if row['date'] == date1:
+                        if row['date'].date() == date1:
                             days_since = (single_date - date1).days
                             form_r += row['rTSS']*weighting[days_since]
                             day_score += row['rTSS']
@@ -130,7 +133,7 @@ def main(argv):
         else:
             day_score = 0
             for index, row in run_scores_df.iterrows():
-                if row['date'] == single_date:
+                if row['date'].date() == single_date:
                     days_since = 0
                     form_r += row['rTSS']*weighting[days_since]
                     form_w += row['rTSS']
