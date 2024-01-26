@@ -155,7 +155,7 @@ def main(argv):
     ax.plot(list(zip(*forms_weekly))[0], list(zip(*forms_weekly))[1], c='m', linewidth=0.5)
     ax.plot(list(zip(*form_delta))[0], list(zip(*form_delta))[1], c='y', linewidth=0.5)
     plt.gcf().autofmt_xdate()
-    plt.ylim(-30,150)
+    plt.ylim(-30,180)
     plt.ylabel('rTSS')
 
     tooltip = plugins.PointHTMLTooltip(points, labels)

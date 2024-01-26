@@ -19,7 +19,7 @@ def parse_arguments(argv):
     parser = argparse.ArgumentParser(description='rTSS calculator')
 
     parser.add_argument('-d', '--directory',
-        help='the directory where the tcx files are stored (e.g. Users/emilybradley/Desktop/runstats/em_files)', required=True)
+        help='the directory where the tcx files are stored (e.g. em_files)', required=True)
     parser.add_argument('-f', '--fivekm',
         help='estimation of current 5km race time', required=True)
 
@@ -39,7 +39,7 @@ def scoremyrun(fivekm,laps_df):
     return totalscore
 
 
-@cache_to_csv("runscores.csv", refresh_time=100)
+@cache_to_csv("runscoresanna.csv", refresh_time=1)
 def main(argv):
     """
     Main entry point for rTSS.py
@@ -62,11 +62,11 @@ def main(argv):
                 rTSS = scoremyrun(args.fivekm, laps_df)
                 stats_dict['rTSS'] = rTSS
                 stats_dict['date'] = stats_dict['starting time'].date()
-                stats_dict['filename'] = activity_path.split('/')[-1]
+                #stats_dict['filename'] = activity_path.split('/')[-1]
                 listofactivitydicts.append(stats_dict)
 
     run_scores_df = pd.DataFrame(listofactivitydicts)
-    run_scores_df.set_index('filename', inplace=True)
+    #run_scores_df.set_index('filename', inplace=True)
 
     # instead of returning the run_scores list, add to an excel file?
     return pd.DataFrame.from_dict(run_scores_df)
