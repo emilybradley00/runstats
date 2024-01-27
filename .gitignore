@@ -4,3 +4,5 @@ runstats_thoughts.docx
 traininggraph.html
 *.pyc
 *.csv
+*.html
+__pycache__

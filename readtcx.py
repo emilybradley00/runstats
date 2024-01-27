@@ -176,6 +176,59 @@ def get_dataframes(fname):
     
     return laps_df, stats_dict
 
+def get_swim_dataframes(fname):
+    """Takes the path to a TCX file (as a string) and returns two Pandas
+        DataFrames: one containing data about the laps, and one containing general stats.
+    """
+    
+    tree = lxml.etree.parse(fname)
+    root = tree.getroot()
+    activity = root.find('ns:Activities', NAMESPACES)[0]  # Assuming we know there is only one Activity in the TCX file
+                                                          # (or we are only interested in the first one)
+
+    #check that the activity type is swimming
+    if activity.attrib == {'Sport': 'Other'}:
+        laps_data = []
+        lap_no = 1
+        for lap in activity.findall('ns:Lap', NAMESPACES):
+            # Get data about the lap itself
+            single_lap_data = get_tcx_lap_data(lap)
+            single_lap_data['number'] = lap_no
+            laps_data.append(single_lap_data)
+
+            # if it's the first lap store the date
+            if lap_no == 1:
+                track = lap.find('ns:Track', NAMESPACES) 
+                single_point_data = track.findall('ns:Trackpoint', NAMESPACES)[0]
+                if single_point_data is not None:
+                    time_str = single_point_data.find('ns:Time', NAMESPACES).text
+                    starting_time = dp.parse(time_str)
+            lap_no += 1
+    
+        # Create DataFrames from the data we have collected. If any information is missing from a particular lap or track
+        # point, it will show up as a null value or "NaN" in the DataFrame.
+    
+        laps_df = pd.DataFrame(laps_data, columns=LAPS_COLUMN_NAMES)
+        laps_df.set_index('number', inplace=True)
+
+        distance_total = laps_df["distance"].sum()
+        total_duration = laps_df["total_time"].sum()
+    
+        avg_pace = timedelta(seconds=int(round((total_duration.total_seconds()*100/distance_total))))
+
+        stats_dict = {
+            "duration":total_duration.round(freq='s').total_seconds(),
+            "distance":str(round(distance_total,2))+' m',
+            "average pace":str(avg_pace)+' mins/100m',
+            "starting time":starting_time
+        }
+
+    else:
+        laps_df = None
+        stats_dict = None
+    
+    return laps_df, stats_dict
+
 
 if __name__ == '__main__':
     
