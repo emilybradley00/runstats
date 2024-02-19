@@ -28,13 +28,11 @@ POINTS_COLUMN_NAMES = ['latitude', 'longitude', 'elevation', 'time', 'heart_rate
 LAPS_COLUMN_NAMES = ['number', 'start_time', 'distance', 'total_time', 'max_speed', 'max_hr', 'avg_hr']
 
 def get_tcx_lap_data(lap):
-#def get_tcx_lap_data(lap: lxml.etree._Element) -> Dict[str, Union[float, datetime, timedelta, int]]:
     """
     Extract some data from an XML element representing a lap and return it as a dict.
     """
     
     data = {}
-    #data: Dict[str, Union[float, datetime, timedelta, int]] = {}
     
     # Note that because each element's attributes and text are returned as strings, we need to convert those strings
     # to the appropriate datatype (datetime, float, int, etc).
@@ -65,9 +63,8 @@ def get_tcx_lap_data(lap):
     return data
 
 def get_tcx_point_data(point):
-#def get_tcx_point_data(point: lxml.etree._Element) -> Optional[Dict[str, Union[float, int, str, datetime]]]:
-    """Extract some data from an XML element representing a track point
-    and return it as a dict.
+    """
+    Extract some data from an XML element representing a track point and return it as a dict.
     """
     
     data = {}
@@ -75,8 +72,9 @@ def get_tcx_point_data(point):
     
     position = point.find('ns:Position', NAMESPACES)
     if position is None:
-        # This Trackpoint element has no latitude or longitude data.
-        # For simplicity's sake, we will ignore such points.
+        # This Trackpoint element has no latitude or longitude data (could be a treadmill activity)
+        data['latitude'] = None
+        data['longitude'] = None
         return None
     else:
         data['latitude'] = float(position.find('ns:LatitudeDegrees', NAMESPACES).text)
@@ -117,8 +115,8 @@ def get_dataframes(fname):
     activity = root.find('ns:Activities', NAMESPACES)[0]  # Assuming we know there is only one Activity in the TCX file
                                                           # (or we are only interested in the first one)
 
-    #check that the activity type is running and not treadmill
-    if activity.attrib == {'Sport': 'Running'} and activity.findall('ns:Position', NAMESPACES) is not None:
+    #check that the activity type is running
+    if activity.attrib == {'Sport': 'Running'}:
         starting_point = {}
         laps_data = []
         lap_no = 1
@@ -128,12 +126,19 @@ def get_dataframes(fname):
             single_lap_data['number'] = lap_no
             laps_data.append(single_lap_data)
         
-            # if it's the first lap, store the starting point
-            if lap_no == 1:
+            # if it's the first lap and there is gps data available (not a treadmill activity), store the starting point
+            if lap_no == 1 and len(activity.findall('ns:Position', NAMESPACES)) > 0:
                 track = lap.find('ns:Track', NAMESPACES) 
                 single_point_data = get_tcx_point_data(track.findall('ns:Trackpoint', NAMESPACES)[0])
                 if single_point_data:
                     starting_point = single_point_data
+            elif lap_no == 1:
+                # treadmill or non-gps activity, get starting time only
+                track = lap.find('ns:Track', NAMESPACES)
+                single_point_data = track.findall('ns:Trackpoint', NAMESPACES)[0]
+                if single_point_data is not None:
+                    time_str = single_point_data.find('ns:Time', NAMESPACES).text
+                    starting_time = dp.parse(time_str)
             lap_no += 1
     
         # Create DataFrames from the data we have collected. If any information is missing from a particular lap or track
@@ -141,7 +146,7 @@ def get_dataframes(fname):
     
         laps_df = pd.DataFrame(laps_data, columns=LAPS_COLUMN_NAMES)
         laps_df.set_index('number', inplace=True)
-
+        
         hr_lap = 0
         distance_total = laps_df["distance"].sum()/1000
         total_duration = laps_df["total_time"].sum()
@@ -150,24 +155,23 @@ def get_dataframes(fname):
 
         hr_average = int(round(hr_lap/total_duration.total_seconds()))
         avg_pace = timedelta(seconds=int(round((total_duration.total_seconds()/distance_total))))
-
-        starting_lat = starting_point["latitude"]
-        starting_long = starting_point["longitude"]
-        starting_time = starting_point["time"]
-
-        # Find timezone based on longitude and latitude
-        tf = TimezoneFinder()
-        local_time_zone = tf.timezone_at(lng=starting_long, lat=starting_lat)
-
-        tz = pytz.timezone(local_time_zone)
-        local_starting_time = starting_time.replace(tzinfo=pytz.utc).astimezone(tz)
+        
+        if len(activity.findall('ns:Position', NAMESPACES)) > 0:
+            starting_lat = starting_point["latitude"]
+            starting_long = starting_point["longitude"]
+            starting_time = starting_point["time"]
+            # Find timezone based on longitude and latitude and convert starting_time to local time
+            tf = TimezoneFinder()
+            local_time_zone = tf.timezone_at(lng=starting_long, lat=starting_lat)
+            tz = pytz.timezone(local_time_zone)
+            starting_time = starting_time.replace(tzinfo=pytz.utc).astimezone(tz)
 
         stats_dict = {
             "duration":total_duration.round(freq='s').total_seconds(),
             "distance":str(round(distance_total,2))+' km',
             "average heart rate":str(hr_average)+' bpm',
             "average pace":str(avg_pace)+' mins/km',
-            "starting time":local_starting_time
+            "starting time":starting_time
         }
 
     else:
