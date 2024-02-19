@@ -115,10 +115,7 @@ def main(argv):
                 day_score = 0
                 if date1 in (single_date - timedelta(n) for n in range(7)):
                     for index, row in run_scores_df.iterrows():
-                        #print(type(row['date']))
-                        #print(type(date1))
                         if row['date'].date() == date1:
-                            print('hello')
                             days_since = (single_date - date1).days
                             form_r += row['rTSS']*weighting[days_since]
                             form_w += row['rTSS']

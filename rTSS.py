@@ -62,13 +62,10 @@ def main(argv):
                 rTSS = scoremyrun(args.fivekm, laps_df)
                 stats_dict['rTSS'] = rTSS
                 stats_dict['date'] = stats_dict['starting time'].date()
-                #stats_dict['filename'] = activity_path.split('/')[-1]
                 listofactivitydicts.append(stats_dict)
 
     run_scores_df = pd.DataFrame(listofactivitydicts)
-    #run_scores_df.set_index('filename', inplace=True)
 
-    # instead of returning the run_scores list, add to an excel file?
     return pd.DataFrame.from_dict(run_scores_df)
 
 
