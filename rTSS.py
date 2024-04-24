@@ -29,12 +29,13 @@ def scoremyrun(fivekm,laps_df):
     threshold = zones(fivekm)
     lapscores = []
     for x in range(1,len(laps_df)+1):
-        gap = laps_df.loc[x].at["total_time"].total_seconds()*(1000/laps_df.loc[x].at["distance"])
-        intensity = threshold/gap
-        #should intensity be linear in relation to threshold? doesn't give enough points to speed work?
-        duration = laps_df.loc[x].at["total_time"].total_seconds()
-        #not actually GAP at the moment, just normal pace (in seconds per km)
-        lapscores.append(100*(duration*intensity*intensity)/(3600))
+        if laps_df.loc[x].at["distance"] > 0:
+            gap = laps_df.loc[x].at["total_time"].total_seconds()*(1000/laps_df.loc[x].at["distance"])
+            intensity = threshold/gap
+            #should intensity be linear in relation to threshold? doesn't give enough points to speed work?
+            duration = laps_df.loc[x].at["total_time"].total_seconds()
+            #not actually GAP at the moment, just normal pace (in seconds per km)
+            lapscores.append(100*(duration*intensity*intensity)/(3600))
     totalscore = int(round(sum(lapscores)))
     return totalscore
 

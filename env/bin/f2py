@@ -1,4 +1,4 @@
-#!/Users/emilybradley/Desktop/runstats/env/bin/python
+#!/Users/emilybradley/Desktop/runstats/env/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys
